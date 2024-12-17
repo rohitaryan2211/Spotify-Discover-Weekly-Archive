@@ -34,7 +34,7 @@ jobs:
         client_id: ${{ secrets.CLIENT_ID }}
         client_secret: ${{ secrets.CLIENT_SECRET }}
         refresh_access_token: ${{ secrets.REFRESH_ACCESS_TOKEN }}
-        archive_weekly_id: ${{ secrets.TOP50_TRACKS_SHORT_ID }}
+        archive_weekly_id: ${{ secrets.ARCHIVE_WEEK_ID }}
         discover_weekly_url: ${{ secrets.DISCOVER_WEEKLY_URL }}
 
       run: python main.py
