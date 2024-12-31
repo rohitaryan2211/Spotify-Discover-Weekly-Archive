@@ -66,7 +66,7 @@ def main():
 
     user_info = get_user_id(sp)
 
-    sp.user_playlist_add_tracks(user=user_info, playlist_id=f'{ARCHIVE_WEEKLY_ID}', tracks=DiscoverWeeklyTracks)
+    sp.user_playlist_add_tracks(user=user_info, playlist_id=f'{ARCHIVE_WEEKLY_ID}', tracks=DiscoverWeeklyTracks, position=0)
             
     print('Script Executed Successfully')
 
