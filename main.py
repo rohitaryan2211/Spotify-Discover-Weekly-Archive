@@ -5,6 +5,7 @@ from spotipy.oauth2 import SpotifyOAuth
 import base64
 from dotenv import load_dotenv
 import os
+from datetime import datetime
 
 load_dotenv()
 
@@ -21,8 +22,6 @@ def getDiscoverWeeklyTracks():
     results = requests.get(URL)    
     soup= BeautifulSoup(results.text, "html.parser")    
 
-    # print(soup)
-
     DiscoverWeeklyTracks = []
 
     a_links = soup.find_all('a')
@@ -31,19 +30,14 @@ def getDiscoverWeeklyTracks():
 
     for x in a_links:
         if x['href'].startswith('/track'):
-            # print(x['href'][7:])
             uri = 'spotify:track:' + str(x['href'][7:])
-            # print(uri)
             DiscoverWeeklyTracks.append(uri)
-
-    # print(DiscoverWeeklyTracks)
 
     return DiscoverWeeklyTracks
 
 def get_user_id(sp):
     return sp.me()["id"]
 
-# Function to refresh access token
 def refresh_access_token(refresh_token):
     
     payload = {
@@ -53,6 +47,10 @@ def refresh_access_token(refresh_token):
     auth_header = {'Authorization': 'Basic ' + base64.b64encode((f'{CLIENT_ID}' + ':' + f'{CLIENT_ID_SECRET}').encode()).decode()}
     response = requests.post('https://accounts.spotify.com/api/token', data=payload, headers=auth_header)
     return response.json().get('access_token')
+
+def add_tracks_to_playlist(sp, user_info, playlist_id, track_uris):
+
+    sp.user_playlist_add_tracks(user=user_info, playlist_id=playlist_id, tracks=track_uris, position=0)
 
 def main():
 
@@ -67,7 +65,47 @@ def main():
     user_info = get_user_id(sp)
 
     sp.user_playlist_add_tracks(user=user_info, playlist_id=f'{ARCHIVE_WEEKLY_ID}', tracks=DiscoverWeeklyTracks, position=0)
-            
+
+    print('Tracks added to Yearly playlist')
+
+    current_date = datetime.now()
+    month_year = current_date.strftime("%B %Y")  
+    monthly_playlist_name = f"Discover Weekly Archive {month_year}"
+
+    playlist_exists = False
+    monthly_playlist_id = None
+
+    playlists = []
+    offset = 0
+    while True:
+        batch = sp.current_user_playlists(limit=50, offset=offset)["items"]
+        if not batch:
+            break
+        playlists.extend(batch)
+        offset += 50
+    
+    for playlist in playlists:
+        if playlist["name"] == monthly_playlist_name:
+            monthly_playlist_id = playlist["id"]
+            playlist_exists = True
+            break
+
+    if not playlist_exists:
+        new_playlist = sp.user_playlist_create(
+            user=user_info,
+            name=monthly_playlist_name,
+            public=True,
+            description=f"Auto-generated archive of Discover Weekly tracks for {month_year}"
+        )
+        monthly_playlist_id = new_playlist["id"]
+        print(f"Created new playlist: {monthly_playlist_name}")
+    else:
+        print(f"Playlist already exists: {monthly_playlist_name}")
+
+    add_tracks_to_playlist(sp, user_info, monthly_playlist_id, DiscoverWeeklyTracks)
+
+    print(f"Added {len(DiscoverWeeklyTracks)} tracks to playlist: {monthly_playlist_name}")     
+
     print('Script Executed Successfully')
 
 if __name__ == '__main__':
