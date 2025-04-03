@@ -64,15 +64,15 @@ def main():
 
     user_info = get_user_id(sp)
 
-    sp.user_playlist_add_tracks(user=user_info, playlist_id=f'{ARCHIVE_WEEKLY_ID}', tracks=DiscoverWeeklyTracks, position=0)
-
     print('Tracks added to Yearly playlist')
 
     current_date = datetime.now()
     month_year = current_date.strftime("%B %Y")  
+    year = current_date.strftime("%Y")
     monthly_playlist_name = f"Discover Weekly Archive {month_year}"
+    yearly_playlist_name = f"Discover Weekly Archive {year}"
 
-    playlist_exists = False
+    monthly_playlist_exists = False
     monthly_playlist_id = None
 
     playlists = []
@@ -84,13 +84,14 @@ def main():
         playlists.extend(batch)
         offset += 50
     
+    ## Check if monthly playlist exists
     for playlist in playlists:
         if playlist["name"] == monthly_playlist_name:
             monthly_playlist_id = playlist["id"]
-            playlist_exists = True
+            monthly_playlist_exists = True
             break
 
-    if not playlist_exists:
+    if not monthly_playlist_exists:
         new_playlist = sp.user_playlist_create(
             user=user_info,
             name=monthly_playlist_name,
@@ -102,9 +103,34 @@ def main():
     else:
         print(f"Playlist already exists: {monthly_playlist_name}")
 
-    add_tracks_to_playlist(sp, user_info, monthly_playlist_id, DiscoverWeeklyTracks)
+    
+    yearly_playlist_exists = False
+    yearly_playlist_id = None
+    
+    ## Check if the yearly playlist exists
+    for playlist in playlists:
+        if playlist["name"] == yearly_playlist_name:
+            yearly_playlist_id = playlist["id"]
+            yearly_playlist_exists = True
+            break
 
+    if not yearly_playlist_exists:
+        new_playlist = sp.user_playlist_create(
+            user=user_info,
+            name=yearly_playlist_name,
+            public=True,
+            description=f"Auto-generated archive of Discover Weekly tracks for {year}"
+        )
+        yearly_playlist_id = new_playlist["id"]
+        print(f"Created new playlist: {yearly_playlist_name}")
+    else:
+        print(f"Playlist already exists: {yearly_playlist_name}")
+
+    add_tracks_to_playlist(sp, user_info, monthly_playlist_id, DiscoverWeeklyTracks)
     print(f"Added {len(DiscoverWeeklyTracks)} tracks to playlist: {monthly_playlist_name}")     
+
+    add_tracks_to_playlist(sp, user_info, yearly_playlist_id, DiscoverWeeklyTracks)
+    print(f"Added {len(DiscoverWeeklyTracks)} tracks to playlist: {yearly_playlist_name}")
 
     print('Script Executed Successfully')
 
