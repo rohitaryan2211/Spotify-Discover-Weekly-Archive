@@ -1,0 +1,35 @@
+name: Keep Actions Alive
+
+on:
+  schedule:
+    # Run at 00:00 UTC on the 1st of every month
+    - cron: '0 0 1 * *'
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  keep-alive:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+      
+      - name: Create dummy commit
+        run: |
+          # Create or update a keep-alive file with current timestamp
+          echo "Last updated: $(date -u +'%Y-%m-%d %H:%M:%S UTC')" > .github/keep-alive.txt
+          git add .github/keep-alive.txt
+          git commit -m "chore: keep actions alive - $(date -u +'%Y-%m-%d')"
+      
+      - name: Push changes
+        run: |
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

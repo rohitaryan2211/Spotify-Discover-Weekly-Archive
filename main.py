@@ -64,8 +64,6 @@ def main():
 
     user_info = get_user_id(sp)
 
-    print('Tracks added to Yearly playlist')
-
     current_date = datetime.now()
     month_year = current_date.strftime("%B %Y")  
     year = current_date.strftime("%Y")
