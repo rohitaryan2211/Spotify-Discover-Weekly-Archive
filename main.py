@@ -46,6 +46,13 @@ def refresh_access_token(refresh_token):
     }
     auth_header = {'Authorization': 'Basic ' + base64.b64encode((f'{CLIENT_ID}' + ':' + f'{CLIENT_ID_SECRET}').encode()).decode()}
     response = requests.post('https://accounts.spotify.com/api/token', data=payload, headers=auth_header)
+    
+    try:
+        response.raise_for_status()
+    except requests.exceptions.HTTPError as err:
+        print(f"Error getting access token: {response.status_code} - {response.text}")
+        raise err
+
     return response.json().get('access_token')
 
 def add_tracks_to_playlist(sp, user_info, playlist_id, track_uris):
