@@ -6,8 +6,12 @@ import base64
 from dotenv import load_dotenv
 import os
 from datetime import datetime
+import logging
 
 load_dotenv()
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 CLIENT_ID= os.getenv('client_id')
 CLIENT_ID_SECRET = os.getenv('client_secret')
@@ -26,7 +30,7 @@ def getDiscoverWeeklyTracks():
 
     a_links = soup.find_all('a')
 
-    print('No of links present: ', len(a_links))
+    logger.info(f'No of links present: {len(a_links)}')
 
     for x in a_links:
         if x['href'].startswith('/track'):
@@ -50,18 +54,42 @@ def refresh_access_token(refresh_token):
     try:
         response.raise_for_status()
     except requests.exceptions.HTTPError as err:
-        print(f"Error getting access token: {response.status_code} - {response.text}")
+        logger.error(f"Error getting access token: {response.status_code} - {response.text}")
         raise err
 
     return response.json().get('access_token')
 
-def add_tracks_to_playlist(sp, user_info, playlist_id, track_uris):
+def get_playlist_track_uris(sp, playlist_id):
+    track_uris = set()
+    offset = 0
+    while True:
+        results = sp.playlist_tracks(playlist_id, offset=offset)
+        items = results.get('items', [])
+        if not items:
+            break
+        for item in items:
+            track = item.get('track')
+            if track and track.get('uri'):
+                track_uris.add(track['uri'])
+        offset += len(items)
+    return track_uris
 
-    sp.user_playlist_add_tracks(user=user_info, playlist_id=playlist_id, tracks=track_uris, position=0)
+def add_tracks_to_playlist(sp, user_info, playlist_id, track_uris):
+    existing_uris = get_playlist_track_uris(sp, playlist_id)
+    new_uris = [uri for uri in track_uris if uri not in existing_uris]
+    
+    if not new_uris:
+        return 0
+
+    # Spotipy limits to 100 tracks per request
+    for i in range(0, len(new_uris), 100):
+        sp.user_playlist_add_tracks(user=user_info, playlist_id=playlist_id, tracks=new_uris[i:i+100], position=0)
+        
+    return len(new_uris)
 
 def main():
 
-    print("Script started")
+    logger.info("Script started")
 
     DiscoverWeeklyTracks = getDiscoverWeeklyTracks()
 
@@ -104,9 +132,9 @@ def main():
             description=f"Auto-generated archive of Discover Weekly tracks for {month_year}"
         )
         monthly_playlist_id = new_playlist["id"]
-        print(f"Created new playlist: {monthly_playlist_name}")
+        logger.info(f"Created new playlist: {monthly_playlist_name}")
     else:
-        print(f"Playlist already exists: {monthly_playlist_name}")
+        logger.info(f"Playlist already exists: {monthly_playlist_name}")
 
     
     yearly_playlist_exists = False
@@ -127,17 +155,17 @@ def main():
             description=f"Auto-generated archive of Discover Weekly tracks for {year}"
         )
         yearly_playlist_id = new_playlist["id"]
-        print(f"Created new playlist: {yearly_playlist_name}")
+        logger.info(f"Created new playlist: {yearly_playlist_name}")
     else:
-        print(f"Playlist already exists: {yearly_playlist_name}")
+        logger.info(f"Playlist already exists: {yearly_playlist_name}")
 
-    add_tracks_to_playlist(sp, user_info, monthly_playlist_id, DiscoverWeeklyTracks)
-    print(f"Added {len(DiscoverWeeklyTracks)} tracks to playlist: {monthly_playlist_name}")     
+    added_monthly = add_tracks_to_playlist(sp, user_info, monthly_playlist_id, DiscoverWeeklyTracks)
+    logger.info(f"Added {added_monthly} new tracks to playlist: {monthly_playlist_name}")     
 
-    add_tracks_to_playlist(sp, user_info, yearly_playlist_id, DiscoverWeeklyTracks)
-    print(f"Added {len(DiscoverWeeklyTracks)} tracks to playlist: {yearly_playlist_name}")
+    added_yearly = add_tracks_to_playlist(sp, user_info, yearly_playlist_id, DiscoverWeeklyTracks)
+    logger.info(f"Added {added_yearly} new tracks to playlist: {yearly_playlist_name}")
 
-    print('Script Executed Successfully')
+    logger.info('Script Executed Successfully')
 
 if __name__ == '__main__':
     main()

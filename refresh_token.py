@@ -10,7 +10,7 @@ CLIENT_ID_SECRET = os.getenv('client_secret')
 sp_oauth = SpotifyOAuth(
     client_id= f'{CLIENT_ID}',
     client_secret = f'{CLIENT_ID_SECRET}',
-    redirect_uri = "http://localhost:8080/",
+    redirect_uri = "http://127.0.0.1:8888/callback",
     scope = "playlist-read-private playlist-modify-public playlist-modify-private",
 )
 token = sp_oauth.get_access_token()
